@@ -617,13 +617,13 @@ num_introductions<-10
 # Gamma-distribution parameters of incubation and infectious period
 incperiod_shape<-5
 incperiod_rate<-0.9
-infperiod_shape<-1.13
-infperiod_rate<-0.226
+infperiod_shape<-3
+infperiod_rate<-0.3
 ave_inc_period <- ceiling(incperiod_shape/incperiod_rate)
 
 # length of run
 num_timesteps <- 200
-beta_control <- 0.5
+beta_control <- 0.33
 
 start_followup1 <- 50
 start_followup2 <- 100
