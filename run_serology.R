@@ -609,7 +609,7 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
 
 
 #Constant parameters
-nsim<-10
+nsim<-1000
 community_size_range<-0
 rate_between<-0
 num_introductions<-10 
