@@ -498,6 +498,11 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
   
   # do an unstratified cox model
   survmodel<-try(coxph(Surv(DayInfected,eventstatus)~serostatus,results_analysis_sample),silent=T)
+  
+  coxph(Surv(Day_enrollment,Day_enrollment+DayInfected,eventstatus)~serostatus,results_analysis_sample)
+  # PH test
+  #PH <- cox.zph(survmodel)
+  #PH_pval <- PH$table[3]
   usesurvmod <- !inherits(survmodel, 'try-error')
   
   if (usesurvmod && vcov(survmodel)>=0){
@@ -505,15 +510,18 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
     
     serEffEst <- exp(survmodel$coefficient + c(0, -1.96, 1.96)*sqrt(survmodel$var))
     zval <- survmodel$coefficient/sqrt(survmodel$var)
-
+    
   } else {
     
     serEffEst<-c(NA,NA,NA)
-
+    
   }
   
   # analysis stratified by Community and day enrollment
   survmodel<-try(coxph(Surv(DayInfected,eventstatus)~serostatus+strata(Day_enrollment)+strata(Community),results_analysis_sample),silent=T)
+  
+  #PH_strat <- cox.zph(survmodel)
+  #PH_pval_strat <- PH_strat$table[3]
   usesurvmod <- !inherits(survmodel, 'try-error')
   
   if (usesurvmod && vcov(survmodel)>=0){
@@ -521,11 +529,50 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
     
     serEffEst_strat <- exp(survmodel$coefficient + c(0, -1.96, 1.96)*sqrt(survmodel$var))
     zval_strat <- survmodel$coefficient/sqrt(survmodel$var)
-
+    
   } else {
     
     serEffEst_strat<-c(NA,NA,NA)
-
+    
+  }
+  
+  # do an unstratified cox model with left truncation
+  survmodel<-try(coxph(Surv(Day_enrollment,Day_enrollment+DayInfected,eventstatus)~serostatus,results_analysis_sample),silent=T)
+  
+  # PH test
+  #PH <- cox.zph(survmodel)
+  #PH_pval <- PH$table[3]
+  usesurvmod <- !inherits(survmodel, 'try-error')
+  
+  if (usesurvmod && vcov(survmodel)>=0){
+    # If no error was thrown and the variance is positive, use the results of the model
+    
+    serEffEst_LT <- exp(survmodel$coefficient + c(0, -1.96, 1.96)*sqrt(survmodel$var))
+    zval <- survmodel$coefficient/sqrt(survmodel$var)
+    
+  } else {
+    
+    serEffEst_LT<-c(NA,NA,NA)
+    
+  }
+  
+  # analysis with left truncation stratified by Community and day enrollment
+  survmodel<-try(coxph(Surv(Day_enrollment,Day_enrollment+DayInfected,eventstatus)~serostatus+strata(Day_enrollment)+strata(Community),results_analysis_sample),silent=T)
+  
+  #PH_strat <- cox.zph(survmodel)
+  #PH_pval_strat <- PH_strat$table[3]
+  usesurvmod <- !inherits(survmodel, 'try-error')
+  
+  if (usesurvmod && vcov(survmodel)>=0){
+    # If no error was thrown and the variance is positive, use the results of the model
+    
+    serEffEst_strat_LT <- exp(survmodel$coefficient + c(0, -1.96, 1.96)*sqrt(survmodel$var))
+    zval_strat <- survmodel$coefficient/sqrt(survmodel$var)
+    
+  } else {
+    
+    serEffEst_strat_LT<-c(NA,NA,NA)
+    
   }
   
   # if only one arm has a case, set HR to either 0 or 1
@@ -540,15 +587,21 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
     if(serostatus_sample==0){
       serEffEst <- c(0,0,0)
       serEffEst_strat <- c(0,0,0)
+      serEffEst_LT <- c(0,0,0)
+      serEffEst_strat_LT <- c(0,0,0)
     } else if(serostatus_sample==1){
       serEffEst <- c(Inf,Inf,Inf)
       serEffEst_strat <- c(Inf,Inf,Inf)
+      serEffEst_LT <- c(Inf,Inf,Inf)
+      serEffEst_strat_LT <- c(Inf,Inf,Inf)
     }
   }
   
   
   analysis_results <- cbind(serEffEst[1],serEffEst[2],serEffEst[3],
-                            serEffEst_strat[1],serEffEst_strat[2],serEffEst_strat[3],sim,nrow(results))
+                            serEffEst_strat[1],serEffEst_strat[2],serEffEst_strat[3],
+                            serEffEst_LT[1],serEffEst_LT[2],serEffEst_LT[3],
+                            serEffEst_strat_LT[1],serEffEst_strat_LT[2],serEffEst_strat_LT[3],sim,nrow(results))
   
   list(results_analysis,analysis_results)
   
