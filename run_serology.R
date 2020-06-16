@@ -126,7 +126,7 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     inf_periods <- rgamma(length(newinfectious),infperiod_shape,infperiod_rate)
     i_nodes <- cbind(i_nodes,rbind(newinfectious,rep(0,length(newinfectious)),inf_periods))
     
-    list(e_nodes, i_nodes, r_nodes, sort(newinfectious))
+    list(e_nodes, i_nodes, r_nodes, sort(newinfectious),newremoved)
   }
   
   spread<-function(g, s_nodes, e_nodes, i_nodes,r_nodes,t,Susceptible,
@@ -252,7 +252,7 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     
     Susceptible <- rbind(Susceptible,cbind(t,length(s_nodes)))
     
-    list(s_nodes, e_nodes,newinfected,Susceptible)
+    list(s_nodes, e_nodes, r_nodes, newinfected,Susceptible)
   }
   
   
@@ -277,10 +277,10 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
   times<-seq(0,50,1)
   parms<-c(betahat=0.95,a1=0.04,a2=0.2,atau=20,sigma=0.2,gamma=0.2)
   out<-as.data.frame(lsoda(y,times,model,parms))
-  out[51:num_timesteps,4] <- 0 #only allow introductions to occur until day 50
+  out[51:num_timesteps,4] <- 0 # #only allow introductions to occur until day 50
   #plot(out$I)
-
-    #### RUN THE EPIDEMIC IN THE STUDY POPULATION ####
+  
+  #### RUN THE EPIDEMIC IN THE STUDY POPULATION ####
   
   # Define how the study population is linked to the source population
   # Connect all individuals to source population at same hazard
@@ -304,6 +304,8 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
   s_nodes <- as.vector(V(g))
   r_nodes <- c()
   Susceptible <- NULL
+  recovered_master <- NULL
+  susc_master <- NULL
   
   
   # Initialize results.
@@ -322,8 +324,9 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     
     # Only need to recover if there are any infected or exposed
     if ((ncol(i_nodes)>0)||(ncol(e_nodes)>0)) {
-      list[e_nodes,i_nodes,r_nodes,newinfectious]<-
+      list[e_nodes,i_nodes,r_nodes,newinfectious,newremoved]<-
         recover(e_nodes,i_nodes,r_nodes,infperiod_shape,infperiod_rate)
+      
       
     } else {
       newinfectious <- c()
@@ -335,12 +338,19 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     
     Susceptible <- as.data.frame(Susceptible)
     
-    list[s_nodes,e_nodes,newinfected,Susceptible]<-
+    list[s_nodes,e_nodes,r_nodes,newinfected,Susceptible]<-
       spread(g,s_nodes,e_nodes,i_nodes,r_nodes,t,Susceptible,
              beta,SP,control_day,beta_control,
              incperiod_shape,incperiod_rate,
              connected_to_source,extF,out$I[t])
     
+    if (t %in% c(start_followup1,start_followup2,start_followup3)){
+      susc_master <- rbind(susc_master,cbind("Node"=s_nodes,"Day"=rep(t,length(s_nodes))))
+    }
+    
+    if (t %in% c(start_followup1,start_followup2,start_followup3)){
+      recovered_master <- rbind(recovered_master,cbind("Node"=r_nodes,"Day"=rep(t,length(r_nodes))))
+    }
     
     numnewinfectious<-length(newinfectious)
     if (numnewinfectious>0) {
@@ -352,9 +362,9 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
       results$InfectedNode[(numinfectious+1):(numinfectious+numnewinfectious)]<-newinfectious
       results$DayInfected[(numinfectious+1):(numinfectious+numnewinfectious)]<-rep(t,numnewinfectious)
       results$Community[(numinfectious+1):(numinfectious+numnewinfectious)]<-newcommunities
-      # seroconversion occurs 7 days after become infectious
-      results$Seroconvert[(numinfectious+1):(numinfectious+numnewinfectious)]<-rep((t+7),numnewinfectious)
-
+      # seroconversion occurs 10 days after become infectious
+      results$Seroconvert[(numinfectious+1):(numinfectious+numnewinfectious)]<-rep((t+10),numnewinfectious)
+      
       numinfectious <- numinfectious+numnewinfectious
       
     }
@@ -368,12 +378,11 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     results$SimulationNumber[1]<-sim
   }
   
-  # track susceptibles remaining
   Susceptible$newexposed <- lag(Susceptible$V2) - Susceptible$V2
   Susceptible$newexposed[is.na(Susceptible$newexposed)] <- 0
   Susceptible$hazard <- Susceptible$newexposed/Susceptible$V2
   
-  list(results,Susceptible)
+  list(results,Susceptible,susc_master,recovered_master)
   
 }
 
