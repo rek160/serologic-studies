@@ -246,6 +246,7 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
       # Add them to e_nodes and remove from s_nodes
       e_nodes <- cbind(e_nodes,rbind(newinfected,rep(0,length(newinfected)),inc_periods))
       s_nodes<-setdiff(s_nodes,newinfected)
+      r_nodes<-setdiff(r_nodes,newinfected)
       
     }
     
@@ -377,7 +378,7 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
 }
 
 
-analyze <- function(results,start_followup1,start_followup2,start_followup3,num_timesteps,match_analysis) {
+analyze <- function(results,start_followup1,start_followup2,start_followup3,num_timesteps,match_analysis,susc_master,recovered_master) {
   
   # for people infected multiple times, change Seroconversion date to that of first time infected
   results_agg <- aggregate(results$SimulationNumber,by=list(results$InfectedNode),length)
@@ -433,6 +434,27 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
   # for those infected multiple times after enrollment, just keep the first time
   results_analysis <- results_analysis[order(results_analysis$DayInfected),]
   results_analysis <- distinct(results_analysis, InfectedNode, .keep_all= TRUE)
+  
+  # restrict to only those susceptible
+  susceptibles <- as.data.frame(rbind(susc_master,recovered_master))
+  
+  if (start_followup1!=start_followup2){
+    
+    results_analysis1 <- results_analysis[results_analysis$Day_enrollment==start_followup1 & 
+                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup1],]
+    results_analysis2 <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
+                                             results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
+    results_analysis3 <-  results_analysis[results_analysis$Day_enrollment==start_followup3 & 
+                                             results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup3],]
+    
+    results_analysis <- rbind(results_analysis1,results_analysis2,results_analysis3)
+    
+  } else{
+    results_analysis <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
+                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
+  }
+  
+  #results_analysis <- results_analysis[results_analysis$DayInfected >10,]
   
   # if analysis is matched, match on day of enrollment and community
   if (match_analysis==1){
