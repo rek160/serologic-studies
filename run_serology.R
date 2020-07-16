@@ -126,7 +126,7 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
     inf_periods <- rgamma(length(newinfectious),infperiod_shape,infperiod_rate)
     i_nodes <- cbind(i_nodes,rbind(newinfectious,rep(0,length(newinfectious)),inf_periods))
     
-    list(e_nodes, i_nodes, r_nodes, sort(newinfectious),newremoved)
+    list(e_nodes, i_nodes, r_nodes, newinfectious,newremoved)
   }
   
   spread<-function(g, s_nodes, e_nodes, i_nodes,r_nodes,t,Susceptible,
@@ -362,8 +362,8 @@ network_epidemic<-function(g,beta,SP,control_day,beta_control,num_introductions,
       results$InfectedNode[(numinfectious+1):(numinfectious+numnewinfectious)]<-newinfectious
       results$DayInfected[(numinfectious+1):(numinfectious+numnewinfectious)]<-rep(t,numnewinfectious)
       results$Community[(numinfectious+1):(numinfectious+numnewinfectious)]<-newcommunities
-      # seroconversion occurs 10 days after become infectious
-      results$Seroconvert[(numinfectious+1):(numinfectious+numnewinfectious)]<-rep((t+10),numnewinfectious)
+      # seroconvert day move into S'
+      results$Seroconvert[(numinfectious+1):(numinfectious+numnewinfectious)]<-t + ceiling(i_nodes[3,(ncol(i_nodes)-length(newinfectious)+1):ncol(i_nodes)])
       
       numinfectious <- numinfectious+numnewinfectious
       
@@ -445,23 +445,23 @@ analyze <- function(results,start_followup1,start_followup2,start_followup3,num_
   results_analysis <- distinct(results_analysis, InfectedNode, .keep_all= TRUE)
   
   # restrict to only those susceptible
-  susceptibles <- as.data.frame(rbind(susc_master,recovered_master))
-  
-  if (start_followup1!=start_followup2){
-    
-    results_analysis1 <- results_analysis[results_analysis$Day_enrollment==start_followup1 & 
-                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup1],]
-    results_analysis2 <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
-                                             results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
-    results_analysis3 <-  results_analysis[results_analysis$Day_enrollment==start_followup3 & 
-                                             results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup3],]
-    
-    results_analysis <- rbind(results_analysis1,results_analysis2,results_analysis3)
-    
-  } else{
-    results_analysis <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
-                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
-  }
+  # susceptibles <- as.data.frame(rbind(susc_master,recovered_master))
+  # 
+  # if (start_followup1!=start_followup2){
+  #   
+  #   results_analysis1 <- results_analysis[results_analysis$Day_enrollment==start_followup1 & 
+  #                                           results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup1],]
+  #   results_analysis2 <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
+  #                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
+  #   results_analysis3 <-  results_analysis[results_analysis$Day_enrollment==start_followup3 & 
+  #                                            results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup3],]
+  #   
+  #   results_analysis <- rbind(results_analysis1,results_analysis2,results_analysis3)
+  #   
+  # } else{
+  #   results_analysis <-  results_analysis[results_analysis$Day_enrollment==start_followup2 & 
+  #                                           results_analysis$InfectedNode %in% susceptibles$Node[susceptibles$Day==start_followup2],]
+  # }
   
   #results_analysis <- results_analysis[results_analysis$DayInfected >10,]
   
@@ -654,7 +654,7 @@ ave_inc_period <- ceiling(incperiod_shape/incperiod_rate)
 
 # length of run
 num_timesteps <- 200
-beta_control <- 0.33
+beta_control <- 0.4
 
 start_followup1 <- 50
 start_followup2 <- 100
