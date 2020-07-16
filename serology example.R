@@ -34,7 +34,7 @@ ave_community_size <- 10000
 num_communities <- 1
 SP <- 1
 rate_within <- 1
-beta <- 0.00002
+beta <- 0.000015
 control_day <- 1000
 
 results_master_1 <- data.frame()
